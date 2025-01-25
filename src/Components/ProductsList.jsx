@@ -47,11 +47,23 @@ const DragAndDropProducts = () => {
 
   useEffect(() => {
     setData((prev) => {
-      const list = [
-        ...prev.filter((val) => val.id !== selectedProducts[0]?.parentId),
+      if (!selectedProducts.length) return prev;
+
+      const parentId = selectedProducts[0]?.parentId;
+
+      const indexToReplace = prev.findIndex((val) => val.id === parentId);
+
+      if (indexToReplace === -1) {
+        return prev;
+      }
+
+      const updatedList = [
+        ...prev.slice(0, indexToReplace),
         ...selectedProducts,
+        ...prev.slice(indexToReplace + 1),
       ];
-      return [...new Map(list.map((item) => [item['id'], item])).values()];
+
+      return [...new Map(updatedList.map((item) => [item.id, item])).values()];
     });
   }, [selectedProducts]);
 
@@ -105,7 +117,7 @@ const DragAndDropProducts = () => {
       <div
         style={{ padding: '50px', margin: 'auto', width: '500px', fontFamily: 'Arial, sans-serif' }}
       >
-        <h3>Add Products</h3>
+        <h3>Product List</h3>
         <div style={{ display: 'flex', justifyContent: 'space-around', fontWeight: 500 }}>
           <div>Product Name</div>
           <div>Discount</div>

@@ -10,7 +10,7 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
   const { apiData, setApiData } = useAppProvider();
   const [dataLoading, setDataLoading] = useState(true);
 
-  const pageCount = useRef(1);
+  const pageCount = useRef(0);
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value.toLowerCase());
@@ -38,7 +38,7 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
 
   const fetchData = async (source = '') => {
     if (source === 'searchQuery') {
-      pageCount.current = 1;
+      pageCount.current = 0;
     }
     try {
       setDataLoading(true);

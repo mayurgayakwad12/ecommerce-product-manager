@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppProvider } from '../AppContext';
-import { ProductsTreeList } from './ProductsPrickerList';
+import { ProductsTreeList } from './ProductsPickerList';
 import crossIcon from '../assets/Cross.svg';
 
 export default function ProductModal({ modalState, setModalState }) {
