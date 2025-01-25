@@ -6,6 +6,7 @@ import CrossIcon from '../assets/Cross.svg';
 import ProductModal from './ProductPickerModal';
 import { useAppProvider } from '../AppContext';
 import CreatePencilIcon from '../assets/Createpencil.svg';
+import DownIcon from '../assets/DownIcon.svg';
 
 const ItemType = {
   PRODUCT: 'product',
@@ -14,8 +15,15 @@ const ItemType = {
 
 const DragAndDropProducts = () => {
   const [modalState, setModalState] = useState({ id: null, open: false });
-  const { selectedProducts } = useAppProvider();
-  const [data, setData] = useState([...selectedProducts]);
+  const { selectedProducts, setSelectedProduct } = useAppProvider();
+  const [data, setData] = useState(() => [
+    {
+      id: Math.floor(Math.random() * 100000),
+      title: '',
+      source: 'new',
+    },
+    ...selectedProducts,
+  ]);
 
   const moveItem = (draggedId, hoverId, type, parentId) => {
     const updatedData = [...data];
@@ -40,7 +48,7 @@ const DragAndDropProducts = () => {
   useEffect(() => {
     setData((prev) => {
       const list = [
-        ...prev.filter((val) => val.id !== selectedProducts[0].parentId),
+        ...prev.filter((val) => val.id !== selectedProducts[0]?.parentId),
         ...selectedProducts,
       ];
       return [...new Map(list.map((item) => [item['id'], item])).values()];
@@ -66,12 +74,42 @@ const DragAndDropProducts = () => {
     ]);
   };
 
+  const handleProductAndVariantDelete = (productId, type, variantId) => {
+    console.log({ productId, type, variantId });
+
+    setData((prev) => {
+      if (type === ItemType.PRODUCT) {
+        return prev.filter((product) => product.id !== productId);
+      }
+
+      if (type === ItemType.VARIANT) {
+        return prev.map((product) => {
+          if (product.id === productId) {
+            return {
+              ...product,
+              variants: product.variants.filter((variant) => variant.id !== variantId),
+            };
+          }
+          return product;
+        });
+      }
+
+      return prev;
+    });
+  };
+
   console.log({ data });
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div style={{ padding: '50px', width: '500px', fontFamily: 'Arial, sans-serif' }}>
+      <div
+        style={{ padding: '50px', margin: 'auto', width: '500px', fontFamily: 'Arial, sans-serif' }}
+      >
         <h3>Add Products</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-around', fontWeight: 500 }}>
+          <div>Product Name</div>
+          <div>Discount</div>
+        </div>
         {data.map((product) => (
           <Product
             key={product.id}
@@ -79,10 +117,9 @@ const DragAndDropProducts = () => {
             moveItem={moveItem}
             toggleVariants={toggleVariants}
             setModalState={setModalState}
+            handleProductAndVariantDelete={handleProductAndVariantDelete}
           />
         ))}
-
-        <ProductModal setModalState={setModalState} modalState={modalState} />
         <button
           style={{
             marginTop: '20px',
@@ -99,11 +136,18 @@ const DragAndDropProducts = () => {
           Add Product
         </button>
       </div>
+      <ProductModal setModalState={setModalState} modalState={modalState} />
     </DndProvider>
   );
 };
 
-const Product = ({ product, moveItem, toggleVariants, setModalState }) => {
+const Product = ({
+  product,
+  moveItem,
+  toggleVariants,
+  setModalState,
+  handleProductAndVariantDelete,
+}) => {
   const [, ref] = useDrop({
     accept: [ItemType.PRODUCT],
     hover: (item) => {
@@ -172,9 +216,8 @@ const Product = ({ product, moveItem, toggleVariants, setModalState }) => {
             onClick={() => console.log('Button clicked')}
           >
             <div
-              // variant="outlined"
               onClick={() => setModalState({ id: product.id, open: true })}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', paddingTop: '8px' }}
             >
               <img src={CreatePencilIcon} />
             </div>
@@ -193,7 +236,6 @@ const Product = ({ product, moveItem, toggleVariants, setModalState }) => {
               outline: 0,
               fontWeight: 600,
             }}
-            // onClick={handleAddEmptyProduct}
           >
             Add Discount
           </button>
@@ -226,7 +268,14 @@ const Product = ({ product, moveItem, toggleVariants, setModalState }) => {
           </>
         )}
 
-        {product.source !== 'new' && <img src={CrossIcon} alt="cross" />}
+        {product.source !== 'new' && (
+          <img
+            src={CrossIcon}
+            alt="cross"
+            style={{ cursor: 'pointer' }}
+            onClick={() => handleProductAndVariantDelete(product.id, ItemType.PRODUCT)}
+          />
+        )}
       </div>
       {product.source !== 'new' && (
         <div style={{ margin: '14px' }}>
@@ -242,14 +291,28 @@ const Product = ({ product, moveItem, toggleVariants, setModalState }) => {
             <span style={{ textDecoration: 'underline' }}>
               {product.showVariants ? 'Hide variants' : 'Show variants'}
             </span>
-            <span>{product.showVariants ? '˄' : '˅'}</span>
+            <img
+              src={DownIcon}
+              style={{
+                marginLeft: '3px',
+                transition: 'all 0.2s ease-in-out',
+                rotate: product.showVariants ? '180deg' : '0deg',
+              }}
+            />
           </a>
         </div>
       )}
       {product.showVariants && (
         <div style={{ marginTop: '45px' }}>
           {product.variants.map((variant) => (
-            <Variant key={variant.id} variant={variant} parentId={product.id} moveItem={moveItem} />
+            <Variant
+              key={variant.id}
+              variant={variant}
+              parentId={product.id}
+              moveItem={moveItem}
+              variantsLength={product.variants.length}
+              handleProductAndVariantDelete={handleProductAndVariantDelete}
+            />
           ))}
         </div>
       )}
@@ -257,7 +320,13 @@ const Product = ({ product, moveItem, toggleVariants, setModalState }) => {
   );
 };
 
-const Variant = ({ variant, parentId, moveItem }) => {
+const Variant = ({
+  variant,
+  parentId,
+  moveItem,
+  variantsLength,
+  handleProductAndVariantDelete,
+}) => {
   const [, ref] = useDrop({
     accept: [ItemType.VARIANT],
     hover: (item) => {
@@ -281,7 +350,8 @@ const Variant = ({ variant, parentId, moveItem }) => {
       style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end',
+        // justifyContent: 'flex-end',
+        paddingLeft: '20px',
       }}
     >
       <span style={{ cursor: 'grab', marginRight: '10px' }}>
@@ -293,7 +363,7 @@ const Variant = ({ variant, parentId, moveItem }) => {
           borderRadius: '30px',
           marginBottom: '5px',
           marginRight: '10px',
-          width: '184px',
+          width: '170px',
           border: '1px solid #00000012',
           backgroundColor: '#FFFFFF',
           boxShadow: '0px 2px 4px 0px #0000001A',
@@ -331,7 +401,14 @@ const Variant = ({ variant, parentId, moveItem }) => {
         <option>% Off</option>
         <option>flat Off</option>
       </select>
-      <img src={CrossIcon} alt="cross" />
+      {variantsLength > 1 && (
+        <img
+          src={CrossIcon}
+          alt="cross"
+          style={{ cursor: 'pointer' }}
+          onClick={() => handleProductAndVariantDelete(parentId, ItemType.VARIANT, variant.id)}
+        />
+      )}
     </div>
   );
 };
