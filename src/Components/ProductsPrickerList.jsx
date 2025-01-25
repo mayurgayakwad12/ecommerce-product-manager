@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from './Loader';
 import SearchIcon from '../assets/SearchIcon.svg';
+import NoImage from '../assets/NoImage.jpg';
 
 import { useAppProvider } from '../AppContext';
 
@@ -8,6 +9,8 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const { apiData, setApiData } = useAppProvider();
   const [dataLoading, setDataLoading] = useState(true);
+
+  const pageCount = useRef(1);
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value.toLowerCase());
@@ -33,102 +36,136 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
     });
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setDataLoading(true);
-        const response = await fetch(
-          `https://stageapi.monkcommerce.app/task/products/search?search=${searchQuery}&page=${1}&limit=10`,
-          {
-            method: 'GET',
-            headers: {
-              'x-api-key': '72njgfa948d9aS7gs5',
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+  const fetchData = async (source = '') => {
+    if (source === 'searchQuery') {
+      pageCount.current = 1;
+    }
+    try {
+      setDataLoading(true);
+      const response = await fetch(
+        `https://stageapi.monkcommerce.app/task/products/search?search=${searchQuery}&page=${pageCount.current}&limit=10`,
+        {
+          method: 'GET',
+          headers: {
+            'x-api-key': '72njgfa948d9aS7gs5',
+          },
         }
+      );
 
-        const data = await response.json();
-        setApiData(data);
-        setDataLoading(false);
-      } catch (error) {
-        console.error('Fetch error:', error);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
 
-    fetchData();
-  }, [searchQuery]);
+      const data = await response.json();
+      if (source === 'pageChange' && !dataLoading && data) {
+        setApiData((prev) => [...(prev || []), ...data]);
+      } else {
+        setApiData(data);
+      }
+      setDataLoading(false);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  };
 
   useEffect(() => {
     if (searchQuery) setSelectedProducts({});
+    fetchData('searchQuery');
   }, [searchQuery]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !dataLoading && apiData?.length) {
+            console.log('You have reached the last div!');
+            pageCount.current++;
+            fetchData('pageChange');
+          }
+        });
+      },
+      { root: null, rootMargin: '0px', threshold: 1.0 } // Observe when fully visible
+    );
+
+    const infiniteDivElement = document.querySelector('.infinite-div');
+    if (infiniteDivElement) {
+      observer.observe(infiniteDivElement);
+    }
+
+    return () => {
+      if (infiniteDivElement) {
+        observer.unobserve(infiniteDivElement);
+      }
+      observer.disconnect();
+    };
+  }, [apiData]);
 
   const renderList = () => (
     <div
       style={{
-        // width: '580px',
         overflowY: 'auto',
-        // border: '1px solid #ddd'
         height: '395px',
+        scrollbarWidth: 'thin',
       }}
     >
       {(apiData || []).map((product) => {
         const productSelected = selectedProducts[product.id] || [];
         const isAllSelected = product.variants.some((v) => productSelected.includes(v.id));
+        const productVariantsLength = product.variants;
         return (
           <div key={product.id}>
             {/* Product Header */}
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
                 borderBottom: '1px solid #0000001A',
                 height: '50px',
+                gap: '12px',
               }}
             >
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={(e) =>
-                  handleProductSelect(product.id, product.variants, e.target.checked)
-                }
+              <div
                 style={{
-                  marginRight: '10px',
-                  width: '18px',
-                  height: '18px',
-                  accentColor: '#008060',
-                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  height: '50px',
+                  gap: '12px',
+                  paddingLeft: '22px',
                 }}
-              />
-              <img
-                src={
-                  product.image.src
-                    ? product.image.src
-                    : 'https://thumbs.dreamstime.com/b/web-324830775.jpg'
-                }
-                alt={product.title}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  marginRight: '10px',
-                  borderRadius: '4px',
-                }}
-              />
-              <h3>{product.title}</h3>
+              >
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={(e) =>
+                    handleProductSelect(product.id, product.variants, e.target.checked)
+                  }
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    accentColor: '#008060',
+                    borderRadius: '4px',
+                  }}
+                />
+                <img
+                  src={product.image.src ? `${product.image.src}?width=100&height=100` : NoImage}
+                  alt={product.title}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '4px',
+                  }}
+                  loading="lazy"
+                />
+                <div>{product.title}</div>
+              </div>
             </div>
 
             <ul
               style={{
                 listStyleType: 'none',
-                paddingLeft: '40px',
-                borderBottom: '1px solid #0000001A',
-                // marginTop: '10px',
+                padding: 0,
+                margin: 0,
               }}
             >
-              {product.variants.map((variant) => (
+              {product.variants.map((variant, index) => (
                 <>
                   <li
                     key={variant.id}
@@ -136,8 +173,10 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      marginBottom: '10px',
-                      // borderBottom: '1px solid grey',
+                      ...(index != productVariantsLength - 1
+                        ? { borderBottom: '1px solid #0000001A' }
+                        : {}),
+                      height: '50px',
                     }}
                   >
                     <div
@@ -145,6 +184,8 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
                         display: 'flex',
                         alignItems: 'center',
                         width: '100%',
+                        paddingLeft: '68px',
+                        gap: '12px',
                       }}
                     >
                       <input
@@ -154,9 +195,9 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
                           handleVariantSelect(product.id, variant.id, e.target.checked)
                         }
                         style={{
-                          marginRight: '10px',
-                          width: '18px',
-                          height: '18px',
+                          // marginRight: '10px',
+                          width: '24px',
+                          height: '24px',
                           accentColor: '#008060',
                           borderRadius: '4px',
                         }}
@@ -166,7 +207,7 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          width: '80%',
+                          width: '90%',
                         }}
                       >
                         <div>{variant.title}</div>
@@ -178,7 +219,7 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
                           <div
                             style={{
                               display: 'flex',
-                              gap: 10,
+                              gap: 30,
                               alignItems: 'center',
                             }}
                           >
@@ -195,6 +236,7 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
           </div>
         );
       })}
+      {!dataLoading && <div className="infinite-div"></div>}
     </div>
   );
 
@@ -240,12 +282,14 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
           borderTop: '1px solid #0000001A',
         }}
       >
-        {!dataLoading ? (
+        {dataLoading ? (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              position: 'relative',
+              top: '150px',
             }}
           >
             <Loader />

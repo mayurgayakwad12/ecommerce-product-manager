@@ -1,9 +1,11 @@
 import './App.css';
-import DragAndDropProducts from './Components/DragAndDropProducts';
+import { Header } from './Components/Header';
+import ProductsList from './Components/ProductsList';
 function App() {
   return (
     <>
-      <DragAndDropProducts />
+      <Header />
+      <ProductsList />
     </>
   );
 }

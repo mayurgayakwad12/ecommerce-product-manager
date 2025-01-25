@@ -3,7 +3,7 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DragAndDropIcon from '../assets/DragAndDrop.svg';
 import CrossIcon from '../assets/Cross.svg';
-import ProductModal from './ProductModal';
+import ProductModal from './ProductPickerModal';
 import { useAppProvider } from '../AppContext';
 import CreatePencilIcon from '../assets/Createpencil.svg';
 
@@ -70,7 +70,7 @@ const DragAndDropProducts = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ padding: '50px', width: '500px', fontFamily: 'Arial, sans-serif' }}>
         <h3>Add Products</h3>
         {data.map((product) => (
           <Product

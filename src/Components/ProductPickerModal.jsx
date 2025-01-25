@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppProvider } from '../AppContext';
-import { ProductsTreeList } from './ProductsTreeList';
+import { ProductsTreeList } from './ProductsPrickerList';
 import crossIcon from '../assets/Cross.svg';
 
 export default function ProductModal({ modalState, setModalState }) {
@@ -89,7 +89,7 @@ export default function ProductModal({ modalState, setModalState }) {
             <img src={crossIcon} />
           </button>
         </div>
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+        <div style={{ flex: 1 }}>
           <ProductsTreeList
             setSelectedProducts={setSelectedProducts}
             selectedProducts={selectedProducts}
