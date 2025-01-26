@@ -15,15 +15,8 @@ const ItemType = {
 
 const DragAndDropProducts = () => {
   const [modalState, setModalState] = useState({ id: null, open: false });
-  const { selectedProducts, setSelectedProduct } = useAppProvider();
-  const [data, setData] = useState(() => [
-    {
-      id: Math.floor(Math.random() * 100000),
-      title: '',
-      source: 'new',
-    },
-    ...selectedProducts,
-  ]);
+  const { selectedProducts } = useAppProvider();
+  const [data, setData] = useState(() => [...selectedProducts]);
 
   const moveItem = (draggedId, hoverId, type, parentId) => {
     const updatedData = [...data];
@@ -87,8 +80,6 @@ const DragAndDropProducts = () => {
   };
 
   const handleProductAndVariantDelete = (productId, type, variantId) => {
-    console.log({ productId, type, variantId });
-
     setData((prev) => {
       if (type === ItemType.PRODUCT) {
         return prev.filter((product) => product.id !== productId);
@@ -110,26 +101,67 @@ const DragAndDropProducts = () => {
     });
   };
 
-  console.log({ data });
+  useEffect(() => {
+    if (!data.length) {
+      handleAddEmptyProduct();
+    }
+  }, [data.length]);
+
+  const handleDiscountChange = (event, productId, type, variantId) => {
+    const { name, value } = event.target;
+    setData((prev) => {
+      if (type === ItemType.PRODUCT) {
+        return prev.map((product) =>
+          product.id === productId ? { ...product, [name]: value } : product
+        );
+      }
+
+      if (type === ItemType.VARIANT) {
+        return prev.map((product) => {
+          if (product.id === productId) {
+            return {
+              ...product,
+              variants: product.variants.map((variant) =>
+                variant.id === variantId ? { ...variant, [name]: value } : variant
+              ),
+            };
+          }
+          return product;
+        });
+      }
+
+      return prev;
+    });
+  };
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div
-        style={{ padding: '50px', margin: 'auto', width: '500px', fontFamily: 'Arial, sans-serif' }}
+        style={{
+          padding: '50px',
+          margin: 'auto',
+          width: '500px',
+          fontFamily: 'Arial, sans-serif',
+          height: 'calc(100vh + -179px)',
+          overflow: 'scroll',
+          scrollbarWidth: 'none',
+        }}
       >
         <h3>Product List</h3>
         <div style={{ display: 'flex', justifyContent: 'space-around', fontWeight: 500 }}>
           <div>Product Name</div>
           <div>Discount</div>
         </div>
-        {data.map((product) => (
+        {data.map((product, index) => (
           <Product
             key={product.id}
+            sno={index + 1}
             product={product}
             moveItem={moveItem}
             toggleVariants={toggleVariants}
             setModalState={setModalState}
             handleProductAndVariantDelete={handleProductAndVariantDelete}
+            handleDiscountChange={handleDiscountChange}
           />
         ))}
         <button
@@ -156,9 +188,11 @@ const DragAndDropProducts = () => {
 const Product = ({
   product,
   moveItem,
+  sno,
   toggleVariants,
   setModalState,
   handleProductAndVariantDelete,
+  handleDiscountChange,
 }) => {
   const [, ref] = useDrop({
     accept: [ItemType.PRODUCT],
@@ -177,6 +211,8 @@ const Product = ({
     }),
   });
 
+  const variantsLength = product.variants?.length;
+
   return (
     <div
       ref={(node) => drag(ref(node))}
@@ -192,6 +228,7 @@ const Product = ({
         <span style={{ cursor: 'grab' }}>
           <img src={DragAndDropIcon} />
         </span>
+        <span>{sno}.</span>
         <div
           style={{
             position: 'relative',
@@ -225,7 +262,6 @@ const Product = ({
               color: '#00000033',
               cursor: 'pointer',
             }}
-            onClick={() => console.log('Button clicked')}
           >
             <div
               onClick={() => setModalState({ id: product.id, open: true })}
@@ -263,6 +299,9 @@ const Product = ({
                 padding: '12px',
               }}
               type="number"
+              name="discountValue"
+              value={product.discountValue}
+              onChange={(e) => handleDiscountChange(e, product.id, ItemType.PRODUCT)}
             />
             <select
               style={{
@@ -273,9 +312,12 @@ const Product = ({
                 outline: 0,
                 padding: '11px',
               }}
+              onChange={(e) => handleDiscountChange(e, product.id, ItemType.PRODUCT)}
+              name="discountType"
+              value={product.discountType}
             >
-              <option style={{ backgroundColor: '#FFFFFF' }}>% Off</option>
-              <option>flat Off</option>
+              <option value="percentage">% Off</option>
+              <option value="flatOff">flat Off</option>
             </select>
           </>
         )}
@@ -289,7 +331,7 @@ const Product = ({
           />
         )}
       </div>
-      {product.source !== 'new' && (
+      {product.source !== 'new' && variantsLength > 1 && (
         <div style={{ margin: '14px' }}>
           <a
             onClick={() => toggleVariants(product.id)}
@@ -314,16 +356,17 @@ const Product = ({
           </a>
         </div>
       )}
-      {product.showVariants && (
-        <div style={{ marginTop: '45px' }}>
+      {(product.showVariants || variantsLength === 1) && (
+        <div style={{ marginTop: variantsLength === 1 ? '14px' : '45px' }}>
           {product.variants.map((variant) => (
             <Variant
               key={variant.id}
               variant={variant}
               parentId={product.id}
               moveItem={moveItem}
-              variantsLength={product.variants.length}
+              variantsLength={variantsLength}
               handleProductAndVariantDelete={handleProductAndVariantDelete}
+              handleDiscountChange={handleDiscountChange}
             />
           ))}
         </div>
@@ -338,6 +381,7 @@ const Variant = ({
   moveItem,
   variantsLength,
   handleProductAndVariantDelete,
+  handleDiscountChange,
 }) => {
   const [, ref] = useDrop({
     accept: [ItemType.VARIANT],
@@ -362,8 +406,8 @@ const Variant = ({
       style={{
         display: 'flex',
         alignItems: 'center',
-        // justifyContent: 'flex-end',
-        paddingLeft: '20px',
+        paddingLeft: '40px',
+        height: '50px',
       }}
     >
       <span style={{ cursor: 'grab', marginRight: '10px' }}>
@@ -373,7 +417,6 @@ const Variant = ({
         style={{
           opacity: isDragging ? 0.5 : 1,
           borderRadius: '30px',
-          marginBottom: '5px',
           marginRight: '10px',
           width: '170px',
           border: '1px solid #00000012',
@@ -397,6 +440,9 @@ const Variant = ({
           padding: '12px',
         }}
         type="number"
+        name="discountValue"
+        value={variant.discountValue}
+        onChange={(e) => handleDiscountChange(e, parentId, ItemType.VARIANT, variant.id)}
         min={0}
       />
       <select
@@ -409,9 +455,12 @@ const Variant = ({
           outline: 0,
           padding: '12px',
         }}
+        name="discountType"
+        value={variant.discountType}
+        onChange={(e) => handleDiscountChange(e, parentId, ItemType.VARIANT, variant.id)}
       >
-        <option>% Off</option>
-        <option>flat Off</option>
+        <option value="percentage">% Off</option>
+        <option value="flatOff">flat Off</option>
       </select>
       {variantsLength > 1 && (
         <img

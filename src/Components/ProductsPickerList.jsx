@@ -10,7 +10,7 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
   const { apiData, setApiData } = useAppProvider();
   const [dataLoading, setDataLoading] = useState(true);
 
-  const pageCount = useRef(0);
+  const pageCount = useRef(1);
 
   const handleSearch = (event) => {
     setSearchQuery(event.target.value.toLowerCase());
@@ -70,17 +70,26 @@ export const ProductsTreeList = ({ selectedProducts, setSelectedProducts }) => {
 
   useEffect(() => {
     if (searchQuery) setSelectedProducts({});
-    fetchData('searchQuery');
+    fetchDataDebounced('searchQuery');
   }, [searchQuery]);
+
+  const debounce = (func, delay) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => func(...args), delay);
+    };
+  };
+
+  const fetchDataDebounced = debounce((source) => fetchData(source), 300);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !dataLoading && apiData?.length) {
-            console.log('You have reached the last div!');
             pageCount.current++;
-            fetchData('pageChange');
+            fetchDataDebounced('pageChange');
           }
         });
       },

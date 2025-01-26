@@ -20,14 +20,16 @@ export default function ProductModal({ modalState, setModalState }) {
     const returnArray = [];
     Object.keys(selectedProducts).forEach((productId) => {
       const selectedProduct = apiData.find((product) => product.id === +productId);
-      const varientSelected = selectedProduct?.variants.filter((vari) =>
-        (selectedProducts[productId] || []).includes(vari.id)
-      );
+      const varientSelected = selectedProduct?.variants
+        .filter((vari) => (selectedProducts[productId] || []).includes(vari.id))
+        .map((variant) => ({ ...variant, discountValue: 0, discountType: 'percentage' }));
       if (selectedProduct) {
         returnArray.push({
           parentId: modalState.id,
           ...selectedProduct,
           variants: varientSelected,
+          discountType: 'percentage',
+          discountValue: 0,
         });
       }
     });
@@ -110,11 +112,13 @@ export default function ProductModal({ modalState, setModalState }) {
               style={{
                 padding: '10px 20px',
                 backgroundColor: 'transparent',
-                border: '1px solid #ccc',
+                border: '1px solid #00000066',
                 borderRadius: '4px',
                 marginRight: '10px',
                 outline: 0,
                 cursor: 'pointer',
+                width: '104px',
+                color: '#00000099',
               }}
               onClick={handleClose}
             >
@@ -127,7 +131,7 @@ export default function ProductModal({ modalState, setModalState }) {
                 border: 'none',
                 borderRadius: '4px',
                 outline: 0,
-                backgroundColor: selectedProductsCount === 0 ? 'grey' : '#007bff',
+                backgroundColor: selectedProductsCount === 0 ? '#00000066' : '#008060',
                 cursor: selectedProductsCount === 0 ? 'not-allowed' : 'pointer',
               }}
               disabled={selectedProductsCount === 0}
